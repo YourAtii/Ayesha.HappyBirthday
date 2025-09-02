@@ -23,8 +23,8 @@
 <body>
   <canvas id="c"></canvas>
 
-  <!-- Background music: put song.mp3 in the same folder -->
-  <audio id="bgm" src="Content/hbd.mp3" preload="auto" loop></audio>
+  <!-- Background music: ensure the file exists at ./Content/hbd.mp3 with exact case on GitHub Pages -->
+  <audio id="bgm" src="./Content/hbd.mp3" preload="auto" loop playsinline></audio>
 
   <!-- Autoplay gate (shown only if the browser blocks autoplay with sound) -->
   <div id="gate" class="gate hidden" role="dialog" aria-modal="true">
@@ -118,7 +118,7 @@
   // ===== Image (robust loading for GitHub Pages) =====
   const img = new Image();
   // img.crossOrigin = "anonymous"; // if using a hosted image
-  img.src="Content/Ayesha.png"; // put Mam.png next to this file
+  img.src = "./Content/Ayesha.png"; // exact case/path for GitHub Pages
 
   let sprite = null;
   let imgReady = false;
@@ -401,30 +401,44 @@
       await audio.play();
       gate.classList.add('hidden');
     } catch (err) {
-      // Autoplay blocked, show gate
+      console.warn('Autoplay blocked or audio error:', err);
       gate.classList.remove('hidden');
     }
     updateButtons();
   }
 
-  // Try autoplay on load (some browsers allow if user interacted with page before)
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && audio.paused && gate.classList.contains('hidden')) tryPlay();
-  });
+  // Extra: also respond to the first touch for iOS devices
+  window.addEventListener('touchstart', () => {
+    if (audio.paused) {
+      audio.play().then(() => gate.classList.add('hidden')).catch(() => gate.classList.remove('hidden'));
+      updateButtons();
+    }
+  }, { once: true, passive: true });
 
-  // First attempt right away
+  // Try autoplay on load (will show the Start gate if blocked)
   tryPlay();
 
   // Gate interaction
   gateBtn.addEventListener('click', async () => {
-    await audio.play();
-    gate.classList.add('hidden');
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+      gate.classList.add('hidden');
+    } catch (e) {
+      console.error('Play() failed:', e);
+      gate.classList.remove('hidden');
+      alert('Could not start audio. Check that ./Content/hbd.mp3 exists and the name/case matches exactly.');
+    }
     updateButtons();
   });
 
   // Controls
   playBtn.addEventListener('click', async () => {
-    if (audio.paused) { await audio.play(); } else { audio.pause(); }
+    try {
+      if (audio.paused) { await audio.play(); } else { audio.pause(); }
+    } catch (e) {
+      console.error('Play/Pause error:', e);
+    }
     updateButtons();
   });
   muteBtn.addEventListener('click', () => {
