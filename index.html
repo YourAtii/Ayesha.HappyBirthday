@@ -24,7 +24,7 @@
   <canvas id="c"></canvas>
 
   <!-- Background music: ensure the file exists at ./Content/hbd.mp3 with exact case on GitHub Pages -->
-  <audio id="bgm" src="./Content/hbd.mp3" preload="auto" loop playsinline></audio>
+  <audio id="bgm" src=".hbd.mp3" preload="auto" loop playsinline></audio>
 
   <!-- Autoplay gate (shown only if the browser blocks autoplay with sound) -->
   <div id="gate" class="gate hidden" role="dialog" aria-modal="true">
@@ -118,7 +118,7 @@
   // ===== Image (robust loading for GitHub Pages) =====
   const img = new Image();
   // img.crossOrigin = "anonymous"; // if using a hosted image
-  img.src = "./Content/Ayesha.png"; // exact case/path for GitHub Pages
+  img.src = "Ayesha.png"; // exact case/path for GitHub Pages
 
   let sprite = null;
   let imgReady = false;
@@ -454,3 +454,4 @@
   </script>
 </body>
 </html>
+
