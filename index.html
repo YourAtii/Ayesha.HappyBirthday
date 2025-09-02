@@ -7,26 +7,26 @@
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #111; overflow: hidden; }
     canvas { display: block; width: 100vw; height: 100vh; }
-    /* Minimal audio control */
+
+    /* Controls */
     .controls { position: fixed; right: 12px; bottom: 12px; z-index: 10; display: flex; gap: 8px; }
     .btn { cursor: pointer; font: 14px system-ui, sans-serif; padding: 6px 10px; border-radius: 10px; border: 1px solid #444; background:#1d1d1d; color:#eee; opacity:.9 }
     .btn:hover { opacity: 1 }
 
-    /* Tap to start overlay for mobile autoplay policies */
-    .gate { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.85); color: #fff; z-index: 20; }
+    /* Tap-to-start gate */
+    .gate { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.85); color:#fff; z-index: 20; }
     .gate.hidden { display: none }
     .gate .card { text-align: center; padding: 20px 24px; border: 1px solid #333; border-radius: 14px; background: #121212; }
     .gate .card h1 { margin: 0 0 10px; font: 600 18px/1.2 system-ui, sans-serif; }
-    .gate .card button { margin-top: 8px }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
 
-  <!-- Background music: ensure the file exists at ./Content/hbd.mp3 with exact case on GitHub Pages -->
-  <audio id="bgm" src="hbd.mp3" preload="auto" loop playsinline></audio>
+  <!-- Audio element. The script will set its src after probing common paths. -->
+  <audio id="bgm" preload="auto" loop playsinline></audio>
 
-  <!-- Autoplay gate (shown only if the browser blocks autoplay with sound) -->
+  <!-- Autoplay gate -->
   <div id="gate" class="gate hidden" role="dialog" aria-modal="true">
     <div class="card">
       <h1>Tap to start the music</h1>
@@ -42,7 +42,7 @@
   </div>
 
   <script>
-  // ===== Canvas + HiDPI setup =====
+  // ================== Canvas + Animation ==================
   const c = document.getElementById("c");
   const ctx = c.getContext("2d", { alpha: false });
 
@@ -59,15 +59,11 @@
     w = cssW; h = cssH; hw = w/2; hh = h/2;
     ctx.font = opts.charSize + "px Verdana";
   }
-
   let w = cssW, h = cssH, hw = w/2, hh = h/2;
 
-  // ===== Options (text bigger + spacing) =====
   const opts = {
     strings: ["HAPPY", "BIRTHDAY!", "Ayesha"],
-    charSize: 44,
-    charSpacing: 44,
-    lineHeight: 56,
+    charSize: 44, charSpacing: 44, lineHeight: 56,
     cx: cssW/2, cy: cssH/2,
 
     fireworkPrevPoints: 10, fireworkBaseLineWidth: 5, fireworkAddedLineWidth: 8,
@@ -87,44 +83,30 @@
     balloonBaseRadian: -(Math.PI/2 - 0.5), balloonAddedRadian: -1
   };
 
-  // ===== Speed profile =====
   const IS_MOBILE = /Mobi|Android/i.test(navigator.userAgent);
   const speedFactor = IS_MOBILE ? 0.90 : 1.25;
-
   (function applySpeed(f) {
     const timeKeys = [
       "fireworkSpawnTime","fireworkBaseReachTime","fireworkAddedReachTime",
       "fireworkCircleBaseTime","fireworkCircleAddedTime",
       "fireworkCircleFadeBaseTime","fireworkCircleFadeAddedTime",
-      "letterContemplatingWaitTime",
-      "balloonSpawnTime","balloonBaseInflateTime","balloonAddedInflateTime"
+      "letterContemplatingWaitTime","balloonSpawnTime","balloonBaseInflateTime","balloonAddedInflateTime"
     ];
     timeKeys.forEach(k => opts[k] = Math.max(1, Math.round(opts[k] / f)));
-
-    const velKeys = [
-      "balloonBaseVel","balloonAddedVel",
-      "fireworkShardBaseVel","fireworkShardAddedVel",
-      "gravity"
-    ];
+    const velKeys = ["balloonBaseVel","balloonAddedVel","fireworkShardBaseVel","fireworkShardAddedVel","gravity"];
     velKeys.forEach(k => opts[k] *= f);
     opts.upFlow *= f;
   })(speedFactor);
 
-  // ===== Derived + misc =====
   const calc = { totalWidth: opts.charSpacing * Math.max(opts.strings[0].length, opts.strings[1].length) };
   const Tau = Math.PI * 2, TauQuarter = Tau / 4;
   const letters = [];
 
-  // ===== Image (robust loading for GitHub Pages) =====
+  // Image
   const img = new Image();
-  // img.crossOrigin = "anonymous"; // if using a hosted image
-  img.src = "Ayesha.png"; // exact case/path for GitHub Pages
-
-  let sprite = null;
-  let imgReady = false;
-  let t0 = performance.now();
-  let imgYBase = -210;   // image vertical position
-  let baseRadius = 95;   // circle radius
+  img.src = "Ayesha.png"; // update path if needed
+  let sprite = null, imgReady = false, t0 = performance.now();
+  let imgYBase = -210, baseRadius = 95;
 
   (async () => {
     try {
@@ -140,7 +122,6 @@
     }
   })();
 
-  // ===== Letters / Fireworks / Balloons with soft glow =====
   function Letter(char, x, y) {
     this.char = char; this.x = x; this.y = y;
     this.dx = -ctx.measureText(char).width / 2;
@@ -296,7 +277,7 @@
       let p = this.prevPoints[k], p2 = this.prevPoints[k + 1];
       ctx.strokeStyle = this.color.replace("alp", k / this.prevPoints.length);
       ctx.lineWidth = k * lwp;
-      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p2[0], p[1]); ctx.stroke();
     }
     if (this.prevPoints[0][1] > hh) this.alive = false;
   };
@@ -307,7 +288,6 @@
     ctx.bezierCurveTo(x + size/4, y - size, x + size/2, y - size/2, x, y);
   }
 
-  // ===== Main loop =====
   function anim() {
     requestAnimationFrame(anim);
     ctx.fillStyle = "#111";
@@ -316,7 +296,6 @@
     ctx.save();
     ctx.translate(hw, hh);
 
-    // Circular image (clipped)
     if (imgReady) {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
@@ -381,78 +360,84 @@
     buildLetters();
   }, { passive: true });
 
-  // ===== Background music handling =====
-  const audio = document.getElementById('bgm');
-  const gate  = document.getElementById('gate');
+  // ================== Background Music ==================
+  const audio   = document.getElementById('bgm');
+  const gate    = document.getElementById('gate');
   const gateBtn = document.getElementById('gateStart');
   const playBtn = document.getElementById('playPause');
   const muteBtn = document.getElementById('mute');
-
-  // Default volume (adjust if you like)
   audio.volume = 0.6;
+
+  // Try these paths in order. Put your real location first.
+  const audioCandidates = [
+    "./hbd.mp3",
+    "./Content/hbd.mp3",
+    "./content/hbd.mp3",
+    "./assets/hbd.mp3"
+  ];
+
+  async function pickAudioSrc() {
+    for (const p of audioCandidates) {
+      try {
+        const url = new URL(p, document.baseURI).href;
+        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+        if (res.ok) {
+          audio.src = p;
+          console.log("Audio found at:", url);
+          return true;
+        }
+      } catch {}
+    }
+    console.warn("No audio file found at any candidate path.");
+    // Keep first as default to allow manual test
+    audio.src = audioCandidates[0];
+    return false;
+  }
 
   function updateButtons() {
     playBtn.textContent = audio.paused ? 'Play' : 'Pause';
     muteBtn.textContent = audio.muted ? 'Unmute' : 'Mute';
   }
 
-  async function tryPlay() {
+  async function startMusic() {
     try {
       await audio.play();
       gate.classList.add('hidden');
     } catch (err) {
-      console.warn('Autoplay blocked or audio error:', err);
       gate.classList.remove('hidden');
     }
     updateButtons();
   }
 
-  // Extra: also respond to the first touch for iOS devices
-  window.addEventListener('touchstart', () => {
-    if (audio.paused) {
-      audio.play().then(() => gate.classList.add('hidden')).catch(() => gate.classList.remove('hidden'));
-      updateButtons();
-    }
-  }, { once: true, passive: true });
-
-  // Try autoplay on load (will show the Start gate if blocked)
-  tryPlay();
-
-  // Gate interaction
-  gateBtn.addEventListener('click', async () => {
-    try {
-      audio.currentTime = 0;
-      await audio.play();
-      gate.classList.add('hidden');
-    } catch (e) {
-      console.error('Play() failed:', e);
-      gate.classList.remove('hidden');
-      alert('Could not start audio. Check that ./Content/hbd.mp3 exists and the name/case matches exactly.');
-    }
-    updateButtons();
+  // First interaction unlock
+  ["click","touchstart","keydown"].forEach(ev => {
+    window.addEventListener(ev, () => {
+      if (audio.paused) startMusic();
+    }, { once: true, passive: true });
   });
+  gateBtn.addEventListener('click', startMusic);
 
   // Controls
   playBtn.addEventListener('click', async () => {
-    try {
-      if (audio.paused) { await audio.play(); } else { audio.pause(); }
-    } catch (e) {
-      console.error('Play/Pause error:', e);
-    }
+    try { if (audio.paused) { await audio.play(); } else { audio.pause(); } }
+    catch (e) { console.error(e); }
     updateButtons();
   });
-  muteBtn.addEventListener('click', () => {
-    audio.muted = !audio.muted;
-    updateButtons();
+  muteBtn.addEventListener('click', () => { audio.muted = !audio.muted; updateButtons(); });
+
+  // Resume when tab becomes active
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && audio.paused) startMusic();
   });
 
-  // Keyboard shortcuts: P = play/pause, M = mute
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'p' || e.key === 'P') { playBtn.click(); }
-    if (e.key === 'm' || e.key === 'M') { muteBtn.click(); }
-  });
+  // Kick off: pick the correct file, then try autoplay
+  (async () => {
+    const found = await pickAudioSrc();
+    if (!found) {
+      alert("Audio file not found at ./hbd.mp3 or ./Content/hbd.mp3. Check the file name and path.");
+    }
+    try { await startMusic(); } catch {}
+  })();
   </script>
 </body>
 </html>
-
-
